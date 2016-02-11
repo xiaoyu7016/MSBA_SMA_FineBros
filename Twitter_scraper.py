@@ -14,33 +14,9 @@ from pandas import DataFrame, Series
 import pandas as pd
 
 
-date = "2016-02-02" # Fetch tweets before Feb 2, 2016
-query = "%23ReactWorld%20OR%20%23ReactToThat%20OR%20fine%20bro%20OR%20fine%20brothers%20OR%20%40thefinebros&src=typd"
-###########################
-# Key words used:
-# 1. #ReactWorld
-# 2. #ReactToThat
-# 3. fine bro
-# 4. fine brothers
-# 5. @thefinebros
-###########################
-
-
-
-
-
-####################
-# Authorization
-####################
-APP_KEY = "2lzEpNDwz9ieHhr738sXX8Avl"
-APP_SECRET = "z3srlvggHvhCqIBSMnKRbn5OY36B2Z58299ipfKtuRXMqwI4rj"
-
-twitter_get_token = Twython(APP_KEY,APP_SECRET,oauth_version=2)
-ACCESS_TOKEN = twitter_get_token.obtain_access_token()
-
-twitter = Twython(APP_KEY,access_token = ACCESS_TOKEN)
-
-
+####################################
+# Function definitions
+####################################
 def crawl_tweets(topic_string,num_of_calls,date_string):
     """A function to crawl tweets
        (1) query topic is specified by "topic_string"
@@ -52,20 +28,6 @@ def crawl_tweets(topic_string,num_of_calls,date_string):
         empty_list.append(twitter.search(q=topic_string,lang = 'en',count=100,until=date_string))
     
     return empty_list
-
-def one_tweet_per_element(raw_tweets_list):
-    empty_list = []
-    for i in range(len(raw_tweets_list)):
-        empty_list += raw_tweets_list[i]['statuses']
-        
-    return empty_list
-
-
-raw_tweets = crawl_tweets(query,100,date)
-messaged_tweets = one_tweet_per_element(raw_tweets)
-
-
-
 
 ####################################
 # formatting to nice csv-ish file
@@ -86,6 +48,54 @@ def collect_user_level_field_from_each_user(title_string,messaged_tweets_list):
     
     return empty_list
 
+def one_tweet_per_element(raw_tweets_list):
+    empty_list = []
+    for i in range(len(raw_tweets_list)):
+        empty_list += raw_tweets_list[i]['statuses']
+        
+    return empty_list
+
+####################################
+# writing to csv
+####################################
+def to_csv_with_proper_name(aDateString,aDataFrame):
+    filename = "fine_bro_" + aDateString + "_10K.csv"
+    aDataFrame.to_csv(filename, encoding = 'utf-8')
+ 
+ 
+ 
+ 
+ 
+##############################################################
+# Executable part  
+##############################################################
+ 
+
+####################
+# Authorization
+####################
+APP_KEY = "2lzEpNDwz9ieHhr738sXX8Avl"
+APP_SECRET = "z3srlvggHvhCqIBSMnKRbn5OY36B2Z58299ipfKtuRXMqwI4rj"
+
+twitter_get_token = Twython(APP_KEY,APP_SECRET,oauth_version=2)
+ACCESS_TOKEN = twitter_get_token.obtain_access_token()
+
+twitter = Twython(APP_KEY,access_token = ACCESS_TOKEN)
+
+
+date = "2016-02-06" # Fetch tweets until the end of this date
+query = "%23ReactWorld%20OR%20%23ReactToThat%20OR%20fine%20bro%20OR%20fine%20brothers%20OR%20%40thefinebros&src=typd"
+###########################
+# Key words used:
+# 1. #ReactWorld
+# 2. #ReactToThat
+# 3. fine bro
+# 4. fine brothers
+# 5. @thefinebros
+###########################
+
+raw_tweets = crawl_tweets(query,100,date)
+messaged_tweets = one_tweet_per_element(raw_tweets)
 # Tweet level fields
 # messaged_tweets[0].keys()
 
@@ -131,4 +141,4 @@ tweets_dict = {
 
 tweets_df = pd.DataFrame(data = tweets_dict, columns = tweets_dict.keys())
 
-tweets_df.to_csv('fine bro_2.9.csv', encoding = 'utf-8')
+to_csv_with_proper_name(date,tweets_df)
