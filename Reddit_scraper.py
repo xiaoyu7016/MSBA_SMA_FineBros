@@ -71,6 +71,9 @@ for i in range(len(flatten_comments)):
 hot_1_df = pd.concat(comment_list,axis=1)
 hot_1_df = hot_1_df.transpose()
 
+# This currently takes 5+ hours to write out 5K comments. 
+# Need to 'shrink' the dataset before writing out
+# Will first try to remove useless attributes
 hot_1_df.to_csv('Hot1_Reddit Thread.csv',encoding = 'utf-8')
 
 # Useful fields in object Submission
