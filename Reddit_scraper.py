@@ -9,7 +9,12 @@ LJIWY
 """
 import praw
 
-# Info
+from pandas import Series, DataFrame
+import pandas as pd
+
+########################
+# Set up Reddit Object
+########################
 APP_ID = "YfynvzstGodvnw"
 APP_SECRET = "GZEEvlzl0dZorffUB_0aH0DmgDw"
 USER_AGENT = "FineBros Buzz Tracker 1.0 by/u/xiaoyu7016"
@@ -18,10 +23,10 @@ URI = "http://www.example.com/unused/redirect/uri"
 
 my_reddit = praw.Reddit(USER_AGENT)
 
-QUERY = 'flair:react'
-SUBREDDIT = 'videos'
-PERIOD = 'month'
 
+########################
+# Define function
+########################
 def fetch_submission_by_sort_criterion(query_string, subreddit_string, period_string, sort_criterion_string):
     """
     This function collect TOP 25 submissions
@@ -42,39 +47,106 @@ def fetch_submission_by_sort_criterion(query_string, subreddit_string, period_st
     submission_list = []    
     for thing in submission_generator:
         submission_list.append(thing)
-    return submission_list
         
+    return submission_list
+
+def print_top(aSubmissionList,n):
+    """
+    This function prints the top n items in the submission list    
+    """
+    for i in range(n):
+        print aSubmissionList[i].title
+ 
+def flatten_comment_tree(aSubmissionList,childrenNum):
+    """
+    This function get all comments with # children > specified
+    and return a flat list of comments (one comment per list element)
+    """
+    # Replace MoreComment object in the Submission object
+    aSubmissionList.replace_more_comments(limit = None, threshold = childrenNum)
+    
+    # flatten the nested tree structure of comments    
+    flattened_comments = praw.helpers.flatten_tree(aSubmissionList.comments)
+    
+    return flattened_comments       
+
+def list_of_comment_object_to_dataframe(aFlatCommentList):
+    comment_list = []
+    for i in range(len(aFlatCommentList)):
+        comment_i_dict = vars(aFlatCommentList[i])
+        comment_i_Series = pd.Series(comment_i_dict.values(),
+                                     index = comment_i_dict.keys())
+        comment_list.append(comment_i_Series)
+        
+    df = pd.concat(comment_list, axis = 1).transpose()
+    
+    return df
+
+
+############################
+# Get top submission threads
+############################
+
+# Query parameters
+QUERY = 'flair:react'
+SUBREDDIT = 'videos'
+PERIOD = 'month'
 
 num_comments = fetch_submission_by_sort_criterion(QUERY,SUBREDDIT,PERIOD,'comments')
 hot = fetch_submission_by_sort_criterion(QUERY,SUBREDDIT,PERIOD,'hot')
 top = fetch_submission_by_sort_criterion(QUERY,SUBREDDIT,PERIOD,'top')
 relevance = fetch_submission_by_sort_criterion(QUERY,SUBREDDIT,PERIOD,'relevance')
 
-# Fetch the whole thread for the hottest submission
+print_top(num_comments,5)
+print_top(hot,5)
+print_top(top,5)
+print_top(relevance,5)
+
+
+########################
+# Fetch target threads
+########################
+
+# 4 Submission threads to fetch
 print hot[0].title
-# Get all comments (this takes time)
-hot[0].replace_more_comments(limit = None)
+  # The Fine Bros from Youtube are now attempting to copyright "reaction videos" (something that has existed before they joined youtube) and are claiming that other reaction videos are infringing on their intellectual property
+print hot[1].title
+  # Let's not just yell about the REACT trademark. Let's stop it! VideoGameAttorney here offering free help.
+print num_comments[1].title
+  # Update.
+print hot[3].title
+  # Not a video, but the FineBros have cancelled all plans of copyrighting
 
-flatten_comments = praw.helpers.flatten_tree(hot[0].comments)
 
-# Format and Output to csv
-from pandas import Series, DataFrame
-import pandas as pd
 
-comment_list = []
-for i in range(len(flatten_comments)):
-    comment_i_dict = vars(flatten_comments[i])
-    comment_i_Series = pd.Series(comment_i_dict.values(),
-                                 index = comment_i_dict.keys())
-    comment_list.append(comment_i_Series)
-                        
-hot_1_df = pd.concat(comment_list,axis=1)
-hot_1_df = hot_1_df.transpose()
+# Get all comments (this takes time) with children >= 2 from a thread
+hot_1 = flatten_comment_tree(hot[0],1)
+hot_2 = flatten_comment_tree(hot[1],2)
+num_comments_2 = flatten_comment_tree(num_comments[1],2)
+hot_4 = flatten_comment_tree(hot[3],2)
 
-# This currently takes 5+ hours to write out 5K comments. 
-# Need to 'shrink' the dataset before writing out
-# Will first try to remove useless attributes
-hot_1_df.to_csv('Hot1_Reddit Thread.csv',encoding = 'utf-8')
+
+# Format list of Comment objects to pandas DataFrame
+hot_1_df = list_of_comment_object_to_dataframe(hot_1)        
+hot_2_df = list_of_comment_object_to_dataframe(hot_2)
+num_comments_2_df = list_of_comment_object_to_dataframe(num_comments_2)
+hot_4_df = list_of_comment_object_to_dataframe(hot_4)
+
+# Identify useful fields
+fields_to_keep = ['id','link_id','parent_id','created_utc', 'author',
+                  'score','controversiality','gilded','downs','ups',
+                  'body']
+hot_1_final = hot_1_df[fields_to_keep]
+hot_2_final = hot_2_df[fields_to_keep]
+num_comments_2_final = num_comments_2_df[fields_to_keep]
+hot_4_final = hot_4_df[fields_to_keep]
+
+# Output to csv
+# The 'encoding' parameter dramatically drives up processing time
+hot_1_final.to_csv('Hot1_Reddit Thread.csv',encoding = 'utf-8')
+hot_2_final.to_csv('Hot2_Reddit Thread.csv',encoding = 'utf-8')
+num_comments_2_final.to_csv('NumComments2_Reddit Thread.csv',encoding = 'utf-8')
+hot_4_final.to_csv('Hot4_Reddit Thread.csv',encoding = 'utf-8')
 
 # Useful fields in object Submission
 # title
